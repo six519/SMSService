@@ -13,7 +13,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.SEND_SMS), 1)
+        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.SEND_SMS, Manifest.permission.READ_SMS), 1)
         startService(Intent(this, SMSService::class.java))
         finish()
     }

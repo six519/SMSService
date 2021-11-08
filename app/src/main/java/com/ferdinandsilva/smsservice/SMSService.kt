@@ -11,6 +11,7 @@ import android.util.Log
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpHandler
 import com.sun.net.httpserver.HttpServer
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -88,7 +89,22 @@ class SMSService : Service() {
         run {
             when (httpExchange.requestMethod) {
                 "GET" -> {
-                    returnDetailResponse(httpExchange, "Invalid request...")
+                    val cursor = contentResolver.query(Uri.parse("content://sms/inbox"), null, null, null, null)
+                    val jsonArray: JSONArray = JSONArray()
+                    if(cursor != null) {
+                        if (cursor.moveToFirst()) {
+                            do {
+                                //2 - Number
+                                //12 - Message
+                                val jsonObject: JSONObject = JSONObject()
+                                jsonObject.put("sender", cursor.getString(2))
+                                jsonObject.put("message", cursor.getString(12))
+                                jsonArray.put(jsonObject)
+                                //break
+                            } while (cursor.moveToNext())
+                        }
+                    }
+                    writeResponse(httpExchange, jsonArray.toString())
                 }
             }
         }
@@ -102,11 +118,11 @@ class SMSService : Service() {
         Log.d(tag, "Starting SMS Service...")
 
         httpServer = HttpServer.create(InetSocketAddress(serverPort), 0)
-        httpServer!!.executor = Executors.newCachedThreadPool()
-        httpServer!!.createContext("/", indexPage)
-        httpServer!!.createContext("/send", sendPage)
-        httpServer!!.createContext("/read", readPage)
-        httpServer!!.start()
+        httpServer?.executor = Executors.newCachedThreadPool()
+        httpServer?.createContext("/", indexPage)
+        httpServer?.createContext("/send", sendPage)
+        httpServer?.createContext("/read", readPage)
+        httpServer?.start()
         Log.d(tag, "SMS Service Started...")
         return super.onStartCommand(intent, flags, startId)
     }
