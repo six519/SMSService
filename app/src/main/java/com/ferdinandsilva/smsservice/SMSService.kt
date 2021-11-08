@@ -1,14 +1,20 @@
 package com.ferdinandsilva.smsservice
 
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import android.telephony.SmsManager
 import android.util.Log
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpHandler
 import com.sun.net.httpserver.HttpServer
+import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetSocketAddress
+import java.util.*
 import java.util.concurrent.Executors
 
 class SMSService : Service() {
@@ -36,7 +42,7 @@ class SMSService : Service() {
                                               
 
         """.trimIndent()
-    private val index = HttpHandler { httpExchange ->
+    private val indexPage = HttpHandler { httpExchange ->
         run {
             when (httpExchange.requestMethod) {
                 "GET" -> {
@@ -45,6 +51,36 @@ class SMSService : Service() {
             }
         }
     }
+
+    private fun returnDetailResponse(httpExchange: HttpExchange, detail: String) {
+        val jsonObject: JSONObject = JSONObject()
+        jsonObject.put("detail", detail)
+        writeResponse(httpExchange, jsonObject.toString())
+    }
+
+    private val sendPage = HttpHandler { httpExchange ->
+        run {
+            when (httpExchange.requestMethod) {
+                "GET" -> {
+                    returnDetailResponse(httpExchange, "Invalid request...")
+                }
+                "POST" -> {
+                    val inputStream = httpExchange.requestBody
+                    val stringStream = inputStreamToString(inputStream)
+                    val jsonRequest = JSONObject(stringStream)
+                    val recipient = jsonRequest.get("recipient").toString()
+                    val message = jsonRequest.get("message").toString()
+
+                    val smsManager: SmsManager = SmsManager.getDefault()
+                    val messageSentIntent = Intent("sent")
+                    val pendingIntent: PendingIntent = PendingIntent.getBroadcast(this, 0, messageSentIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+                    smsManager.sendTextMessage(recipient, null, message, pendingIntent, null)
+                    returnDetailResponse(httpExchange, "Message sent to ${recipient}...")
+                }
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
     }
@@ -54,7 +90,8 @@ class SMSService : Service() {
 
         httpServer = HttpServer.create(InetSocketAddress(serverPort), 0)
         httpServer!!.executor = Executors.newCachedThreadPool()
-        httpServer!!.createContext("/", index)
+        httpServer!!.createContext("/", indexPage)
+        httpServer!!.createContext("/send", sendPage)
         httpServer!!.start()
         Log.d(tag, "SMS Service Started...")
         return super.onStartCommand(intent, flags, startId)
@@ -69,5 +106,10 @@ class SMSService : Service() {
         val outputStream = httpExchange.responseBody
         outputStream.write(responseText.toByteArray())
         outputStream.close()
+    }
+
+    private fun inputStreamToString(inputStream: InputStream): String {
+        val scanner = Scanner(inputStream).useDelimiter("\\A")
+        return if (scanner.hasNext()) scanner.next() else ""
     }
 }
