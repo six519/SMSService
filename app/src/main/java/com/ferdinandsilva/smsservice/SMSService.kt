@@ -3,6 +3,8 @@ package com.ferdinandsilva.smsservice
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.database.Cursor
+import android.net.Uri
 import android.os.IBinder
 import android.telephony.SmsManager
 import android.util.Log
@@ -13,6 +15,7 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.lang.Exception
 import java.net.InetSocketAddress
 import java.util.*
 import java.util.concurrent.Executors
@@ -81,6 +84,16 @@ class SMSService : Service() {
         }
     }
 
+    private val readPage = HttpHandler { httpExchange ->
+        run {
+            when (httpExchange.requestMethod) {
+                "GET" -> {
+                    returnDetailResponse(httpExchange, "Invalid request...")
+                }
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
     }
@@ -92,6 +105,7 @@ class SMSService : Service() {
         httpServer!!.executor = Executors.newCachedThreadPool()
         httpServer!!.createContext("/", indexPage)
         httpServer!!.createContext("/send", sendPage)
+        httpServer!!.createContext("/read", readPage)
         httpServer!!.start()
         Log.d(tag, "SMS Service Started...")
         return super.onStartCommand(intent, flags, startId)
