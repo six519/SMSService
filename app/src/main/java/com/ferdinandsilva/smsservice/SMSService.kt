@@ -118,12 +118,15 @@ class SMSService : Service() {
         Log.d(tag, "Starting SMS Service...")
 
         httpServer = HttpServer.create(InetSocketAddress(serverPort), 0)
-        httpServer?.executor = Executors.newCachedThreadPool()
-        httpServer?.createContext("/", indexPage)
-        httpServer?.createContext("/send", sendPage)
-        httpServer?.createContext("/read", readPage)
-        httpServer?.start()
-        Log.d(tag, "SMS Service Started...")
+        httpServer.run {
+            this?.executor = Executors.newCachedThreadPool()
+            this?.createContext("/", indexPage)
+            this?.createContext("/send", sendPage)
+            this?.createContext("/read", readPage)
+            this?.start()
+            Log.d(tag, "SMS Service Started...")
+        }
+
         return super.onStartCommand(intent, flags, startId)
     }
 
